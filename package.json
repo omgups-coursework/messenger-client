@@ -1,0 +1,35 @@
+{
+  "name": "messanger-web-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "react-router build",
+    "dev": "react-router dev",
+    "start": "react-router-serve ./build/server/index.js",
+    "typecheck": "react-router typegen && tsc"
+  },
+  "dependencies": {
+    "@react-router/node": "^7.4.0",
+    "@react-router/serve": "^7.4.0",
+    "highlight.js": "^11.11.1",
+    "isbot": "^5",
+    "motion": "^12.5.0",
+    "prismjs": "^1.30.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router": "^7.4.0",
+    "styled-components": "^6.1.16",
+    "vite-plugin-svgr": "^4.3.0"
+  },
+  "devDependencies": {
+    "@react-router/dev": "^7.4.0",
+    "@types/node": "^20",
+    "@types/prismjs": "^1.26.5",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
+    "react-router-devtools": "^1.1.0",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}

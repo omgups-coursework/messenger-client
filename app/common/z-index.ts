@@ -1,0 +1,1 @@
+export const DRAGGABLE_CORNER_Z_INDEX = 100;
