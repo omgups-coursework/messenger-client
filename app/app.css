@@ -11,9 +11,10 @@ body {
 }
 
 body {
-    font-family: "Roboto", -apple-system, apple color emoji, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    font-family: "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    /*"Roboto", -apple-system, apple color emoji, BlinkMacSystemFont,*/
 
-    font-size: 16px;
+font-size: 16px;
     padding: 0;
     margin: 0;
 }
