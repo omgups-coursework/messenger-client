@@ -1,6 +1,7 @@
-import type {Chat, Message} from "~/common/types";
+import {type Chat, type Message, type MessageBase, OutgoingMessageStatusEnum} from "~/common/types";
 import {EventListenerBase, type EventListenerListeners} from "~/helpers/event-listener-base";
 import {messageStore, type MessageStore} from "~/database/message.store";
+import {chatConnectionManager} from "~/connection/p2p";
 
 
 export interface MessageManagerEventListenerListeners extends EventListenerListeners {
@@ -56,6 +57,27 @@ export class MessageManager extends EventListenerBase<MessageManagerEventListene
         }
 
         return message;
+    }
+
+    public async send(chatId: Chat['id'], message: MessageBase): Promise<void> {
+        const connection = chatConnectionManager.getConnection(chatId);
+
+        if (connection == null) {
+            // offline
+
+            return;
+        }
+
+        await this.add({
+            ...message,
+            fromMe: true,
+            status: OutgoingMessageStatusEnum.SENT,
+        });
+
+        const ack = await connection.sendPendingMessage({
+            id: message.id,
+            message: message,
+        });
     }
 }
 

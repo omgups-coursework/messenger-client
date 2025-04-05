@@ -21,6 +21,8 @@ import {ButtonGroup} from "~/components/button-group.component";
 import {useEscape} from "~/hooks/use-escape";
 import {CHAT_BACK_ESCAPE_PRIORITY, CHAT_CLEAR_SELECTED_MESSAGES_ESCAPE_PRIORITY} from "~/common/escpae-priority";
 import {findUrlMatches} from "~/lib/url/find-url-matches";
+import {useConnection} from "~/hooks/use-connection";
+import {chatConnectionManager} from "~/connection/p2p";
 
 type LinkPreviewResult = {
     url: string;
@@ -78,9 +80,22 @@ export function meta({params}: Route.MetaArgs) {
 export default function Chat() {
     const theme = useTheme();
     const {chatId} = useParams();
+
+    if (chatId == null) {
+        throw new Error('chatId is null');
+    }
+
+    const {
+        connection,
+        connectionState,
+        iceConnectionState,
+        iceGatheringState,
+        signalingState,
+        chatState,
+    } = useConnection(chatId);
+
     const {chat} = useChat(chatId as string);
     const {messages} = useChatMessages(chatId as string);
-
 
     const [chatInput, setChatInput] = useState<string>('');
 
@@ -111,10 +126,8 @@ export default function Chat() {
             const extractedLinkPreviewFromText = await fetchLinkPreview(trimmedText);
 
             if (extractedLinkPreviewFromText) {
-                messageManager.add({
+                messageManager.send(chat.id, {
                     id: Date.now().toString(),
-                    fromMe: true,
-                    status: OutgoingMessageStatusEnum.SENT,
                     chatId: chat.id,
                     timestamp: Date.now(),
                     extendedTextMessage: {
@@ -132,10 +145,8 @@ export default function Chat() {
             }
         }
 
-        messageManager.add({
+        messageManager.send(chat.id, {
             id: Date.now().toString(),
-            fromMe: true,
-            status: OutgoingMessageStatusEnum.SENT,
             chatId: chat.id,
             timestamp: Date.now(),
             textMessage: {
@@ -363,6 +374,8 @@ export default function Chat() {
                     <AnimatedHeader
                         showButtons={selectedMessageCount > 0}
                         chatTitle={chat.title}
+                        // chatSubtitle={`${connectionState} ${signalingState} ${iceConnectionState} ${iceGatheringState}`}
+                        chatSubtitle={chatState === null ? 'offline' : chatState.type === 'idle' ? 'online' : chatState.type === 'paused' ? 'last seen recently' : 'unknown'}
                         selectedCount={selectedMessageCount}
                     />
                 </Header>
@@ -399,15 +412,16 @@ export default function Chat() {
 const AnimatedHeader: React.FC<{
     showButtons: boolean;
     chatTitle: string;
+    chatSubtitle: string;
     selectedCount: number;
-}> = ({ showButtons, chatTitle, selectedCount }) => {
+}> = ({ showButtons, chatTitle, chatSubtitle, selectedCount }) => {
     return (
         <SwitcherContainer>
             <InnerContainer style={{ transform: showButtons ? 'translateY(-40px)' : 'translateY(0)' }}>
                 <View>
                     <ChatInfo>
                         <Title>{chatTitle}</Title>
-                        <Subtitle>bot</Subtitle>
+                        <Subtitle>{chatSubtitle}</Subtitle>
                     </ChatInfo>
                 </View>
                 <View>

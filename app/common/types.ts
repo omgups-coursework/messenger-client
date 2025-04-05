@@ -1,4 +1,4 @@
-interface MessageBase {
+export interface MessageBase {
     id: string;
     chatId: string;
     timestamp: number;

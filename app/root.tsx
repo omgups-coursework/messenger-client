@@ -14,7 +14,7 @@ import {chatManager} from "~/managers/chat.manager";
 import {useEffect} from "react";
 import {messageManager} from "~/managers/message.manager";
 import {messageStore} from "~/database/message.store";
-import {ChatConnectionManager, MessengerSignaling} from "~/connection/p2p";
+import {chatConnectionManager, messengerSignaling} from "~/connection/p2p";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -33,33 +33,36 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const userId = prompt('your user id is')
+      const userId = localStorage.getItem('userId') ?? prompt('your user id is')
 
       if (userId == null) {
         throw new Error('user id not provided')
       }
 
-      console.log(`userId: ${userId}`)
+      localStorage.setItem('userId', userId);
 
-      const messengerSignaling = new MessengerSignaling(userId, 'ws://localhost:8080');
+      console.log(`userId: ${userId}`);
+
+      (() => {
+        messengerSignaling.open(userId, 'ws://localhost:8080')
+      })();
+
       (window as any).messengerSignaling = messengerSignaling;
-
-      const chatConnectionManager = new ChatConnectionManager(messengerSignaling);
       (window as any).chatConnectionManager = chatConnectionManager;
 
       (window as any).messageManager = messageManager;
 
       await chatManager.add({
-        id: '79836200181@c.us',
+        id: '1',
         photo: {
           type: 'empty'
         },
-        title: 'Николай',
+        title: 'Первая личность',
         version: 0,
       }).catch(() => {})
 
       await chatManager.add({
-        id: 'test@c.us',
+        id: '2',
         photo: {
           type: 'empty'
         },
@@ -68,41 +71,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       }).catch(() => {})
 
       await chatManager.add({
-        id: 't2@c.us',
+        id: '3',
         photo: {
           type: 'empty'
         },
         title: 'Третья личность',
         version: 0,
-      }).catch(() => {})
-
-      await chatManager.add({
-        id: 'wine_rose@c.us',
-        photo: {
-          type: 'empty'
-        },
-        title: 'Елизаветттка',
-        version: 0,
-      }).catch(() => {})
-
-      await chatManager.add({
-        id: 'yulik@c.us',
-        photo: {
-          type: 'empty'
-        },
-        title: 'Юлик',
-        version: 0,
-      }).catch(() => {})
-
-      await messageStore.add({
-        fromMe: false,
-        senderId: '79836200181@c.us',
-        id: '1231236128368128371627833',
-        chatId: '79836200181@c.us',
-        timestamp: Date.now(),
-        textMessage: {
-          text: 'test'
-        }
       }).catch(() => {})
 
       await chatManager.initialize();
