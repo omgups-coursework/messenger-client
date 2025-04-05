@@ -14,6 +14,7 @@ import {chatManager} from "~/managers/chat.manager";
 import {useEffect} from "react";
 import {messageManager} from "~/managers/message.manager";
 import {messageStore} from "~/database/message.store";
+import {ChatConnectionManager, MessengerSignaling} from "~/connection/p2p";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -32,6 +33,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
+      const userId = prompt('your user id is')
+
+      if (userId == null) {
+        throw new Error('user id not provided')
+      }
+
+      console.log(`userId: ${userId}`)
+
+      const messengerSignaling = new MessengerSignaling(userId, 'ws://localhost:8080');
+      (window as any).messengerSignaling = messengerSignaling;
+
+      const chatConnectionManager = new ChatConnectionManager(messengerSignaling);
+      (window as any).chatConnectionManager = chatConnectionManager;
+
       (window as any).messageManager = messageManager;
 
       await chatManager.add({

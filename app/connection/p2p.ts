@@ -2,6 +2,7 @@ import type {EventListenerListeners} from "~/helpers/event-listener-base";
 import type {Chat, Message} from "~/common/types";
 import {EventListenerBase} from "~/helpers/event-listener-base";
 import {Resolvable} from "~/lib/promise/resolvable";
+import {TransactionManager} from "~/lib/thread/transaction-manager";
 
 
 interface AddPeerData {
@@ -39,19 +40,105 @@ export interface ConnectionManagerEventListenerListeners extends EventListenerLi
     'ice_candidate': (data: IceCandidateData) => void;
 }
 
-class MessengerSignaling extends EventListenerBase<ConnectionManagerEventListenerListeners> {
+export class MessengerSignaling extends EventListenerBase<ConnectionManagerEventListenerListeners> {
+    private readonly userId: string;
+    private readonly socket: WebSocket;
 
-    public relayIce(data: RelayIceCandidateData): void {
-        // TODO
+    public constructor(userId: string, wsUrl: string) {
+        super();
+
+        this.userId = userId;
+
+        this.socket = new WebSocket(wsUrl);
+        this.socket.binaryType = 'arraybuffer';
+
+        this.socket.onopen = this.onSocketOpen;
+        this.socket.onmessage = this.onSocketMessage;
+        this.socket.onerror = this.onSocketError;
+        this.socket.onclose = this.onSocketClose;
+    }
+
+    private onSocketOpen = (event: Event): void => {
+        console.log("Signaling socket connected");
+
+        const payload = {
+            handshake: {
+                clientPayload: {
+                    userId: this.userId,
+                }
+            }
+        }
+
+        this.sendRaw(payload);
+    };
+
+    private onSocketMessage = (event: MessageEvent): void => {
+        try {
+            const decoder = new TextDecoder("utf-8");
+            const jsonString = decoder.decode(event.data);
+            const message = JSON.parse(jsonString);
+            console.log("Received message:", message);
+
+            if (message.sessionDescription) {
+                this.dispatchEvent('session_description', {
+                    chatId: message.from,
+                    sessionDescription: message.sessionDescription,
+                });
+
+                return;
+            }
+
+            if (message.iceCandidate) {
+                this.dispatchEvent('ice_candidate', {
+                    chatId: message.from,
+                    iceCandidate: message.iceCandidate,
+                });
+
+                return;
+            }
+
+        } catch (error) {
+            console.error("Failed to parse signaling message", error);
+        }
+    };
+
+    private onSocketError = (event: Event): void => {
+        console.error("Signaling socket error", event);
+    };
+
+    private onSocketClose = (event: CloseEvent): void => {
+        console.log("Signaling socket closed", event);
+    };
+
+    public sendRaw(message: any) {
+        const jsonString = JSON.stringify(message);
+
+        const encoder = new TextEncoder();
+        const arrayBuffer = encoder.encode(jsonString);
+
+        this.socket.send(arrayBuffer);
     }
 
     public relaySdp(data: RelaySdpDAta): void {
+        this.sendRaw({
+            from: this.userId,
+            to: data.chatId,
+            sessionDescription: data.sessionDescription,
+        });
+    }
 
+    public relayIce(data: RelayIceCandidateData): void {
+        this.sendRaw({
+            from: this.userId,
+            to: data.chatId,
+            iceCandidate: data.iceCandidate,
+        });
     }
 }
 
 export class ChatConnectionManager {
     public readonly connections = new Map<Chat['id'], Connection>();
+    private readonly transactionManager = new TransactionManager();
 
     public constructor(
         public readonly messengerSignaling: MessengerSignaling
@@ -64,10 +151,22 @@ export class ChatConnectionManager {
     }
 
     public getConnection(chatId: Chat['id']): Connection | null {
-        return null
+        const connection = this.connections.get(chatId);
+
+        if (connection) {
+            return connection;
+        }
+
+        return null;
     }
 
     private getOrCreateConnection(chatId: Chat['id']): Connection {
+        const existConnection = this.getConnection(chatId);
+
+        if (existConnection) {
+            return existConnection;
+        }
+
         const rtcPeerConnection = new RTCPeerConnection({
 
         });
@@ -78,7 +177,12 @@ export class ChatConnectionManager {
         return connection;
     }
 
-    public async startForChat(chatId: Chat['id']): Promise<void> {}
+    public async startForChat(chatId: Chat['id']): Promise<void> {
+        return this.onAddPeer({
+            chatId: chatId,
+            createOffer: true,
+        });
+    }
 
     private onAddPeer = async (data: AddPeerData): Promise<void> => {
         const connection = this.getOrCreateConnection(data.chatId);
@@ -93,6 +197,7 @@ export class ChatConnectionManager {
         }
 
         if (data.createOffer) {
+            connection.setup();
             const offer = await connection.rtcPeerConnection.createOffer();
             await connection.rtcPeerConnection.setLocalDescription(offer);
 
@@ -114,33 +219,49 @@ export class ChatConnectionManager {
     }
 
     private onSessionDescription = async (data: SessionDescriptionData): Promise<void> => {
-        const connection = this.getOrCreateConnection(data.chatId);
+        return this.transactionManager.transaction(
+            [data.chatId],
+            () => {},
+            async () => {
+                const connection = this.getOrCreateConnection(data.chatId);
 
-        const remoteDescription = new RTCSessionDescription(data.sessionDescription);
+                const remoteDescription = new RTCSessionDescription(data.sessionDescription);
 
-        await connection.rtcPeerConnection.setRemoteDescription(remoteDescription);
+                console.log(`[onSessionDescription] [${data.chatId}] setRemoteDescription`)
+                await connection.rtcPeerConnection.setRemoteDescription(remoteDescription);
 
-        if (remoteDescription.type !== 'offer') {
-            return;
-        }
+                if (remoteDescription.type !== 'offer') {
+                    return;
+                }
 
-        const answer = await connection.rtcPeerConnection.createAnswer();
+                const answer = await connection.rtcPeerConnection.createAnswer();
 
-        await connection.rtcPeerConnection.setLocalDescription(answer);
+                console.log(`[onSessionDescription] [${data.chatId}] setLocalDescription`)
+                await connection.rtcPeerConnection.setLocalDescription(answer);
 
-        this.messengerSignaling.relaySdp({
-            chatId: data.chatId,
-            sessionDescription: answer,
-        });
+                this.messengerSignaling.relaySdp({
+                    chatId: data.chatId,
+                    sessionDescription: answer,
+                });
+            },
+            () => {},
+        )
     }
 
     private onIceCandidate = async (data: IceCandidateData): Promise<void> => {
-        const connection = this.getOrCreateConnection(data.chatId);
-        const rtcIceCandidate = new RTCIceCandidate(data.iceCandidate)
+        return this.transactionManager.transaction(
+            [data.chatId],
+            () => {},
+            async () => {
+                const connection = this.getOrCreateConnection(data.chatId);
+                const rtcIceCandidate = new RTCIceCandidate(data.iceCandidate)
 
-        await connection.rtcPeerConnection.addIceCandidate(rtcIceCandidate);
+                console.log(`[onIceCandidate] [${data.chatId}] addIceCandidate`)
+                await connection.rtcPeerConnection.addIceCandidate(rtcIceCandidate);
+            },
+            () => {},
+        )
     }
-
 }
 
 interface HandshakeData {
@@ -184,6 +305,16 @@ export class Connection extends EventListenerBase<ConnectionEventListenerListene
         }
     }
 
+    public setup() {
+        const rtcDataChannel = this.rtcPeerConnection.createDataChannel("chat");
+        rtcDataChannel.onopen = this.onOpen;
+        rtcDataChannel.onclose = this.onClose;
+        rtcDataChannel.onclosing = this.onClosing;
+        rtcDataChannel.onerror = this.onError;
+        rtcDataChannel.onmessage = this.onMessage;
+        this.rtcDataChannel = rtcDataChannel;
+    }
+
     public waitOpen(): Promise<void> {
         return this.openResolvable.promise;
     }
@@ -214,7 +345,9 @@ export class Connection extends EventListenerBase<ConnectionEventListenerListene
 
     private onError = (event: RTCErrorEvent): void => {}
 
-    private onMessage = (event: MessageEvent): void => {}
+    private onMessage = (event: MessageEvent): void => {
+        console.log(`[onMessage]:`, event);
+    }
 
     private assertGetRtcDataChannel(): RTCDataChannel {
         if (this.rtcDataChannel !== null) {
