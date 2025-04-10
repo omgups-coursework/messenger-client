@@ -6,9 +6,10 @@ export interface MessageBase {
     extendedTextMessage?: ExtendedTextMessage;
 }
 
-interface IncomingMessage extends MessageBase {
+export interface IncomingMessage extends MessageBase {
     fromMe: false;
     senderId: string;
+    readTimestamp: number | null;
 }
 
 export enum OutgoingMessageStatusEnum {
@@ -19,9 +20,10 @@ export enum OutgoingMessageStatusEnum {
     READ = 3,
 }
 
-interface OutgoingMessage extends MessageBase {
+export interface OutgoingMessage extends MessageBase {
     fromMe: true;
     status: OutgoingMessageStatusEnum;
+    readTimestamp: number | null;
 }
 
 export type Message = IncomingMessage | OutgoingMessage;

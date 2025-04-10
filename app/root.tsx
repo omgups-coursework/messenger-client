@@ -13,8 +13,7 @@ import {ThemeProvider} from "styled-components";
 import {chatManager} from "~/managers/chat.manager";
 import {useEffect} from "react";
 import {messageManager} from "~/managers/message.manager";
-import {messageStore} from "~/database/message.store";
-import {chatConnectionManager, messengerSignaling} from "~/connection/p2p";
+import {messengerSignaling} from "~/connection/messenger-signaling";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -46,11 +45,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
       (() => {
         messengerSignaling.open(userId, 'ws://localhost:8080')
       })();
-
-      (window as any).messengerSignaling = messengerSignaling;
-      (window as any).chatConnectionManager = chatConnectionManager;
-
-      (window as any).messageManager = messageManager;
 
       await chatManager.add({
         id: '1',

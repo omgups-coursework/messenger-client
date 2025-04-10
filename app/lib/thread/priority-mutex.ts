@@ -58,17 +58,18 @@ export const makePriorityMutex = () => {
     },
 
     clear(): void {
-      mutexData.taskQueue.forEach((task) => {
-        task.abortController.abort(); // Отменяем каждую задачу
-      });
+      for (const task of mutexData.taskQueue) {
+        task.abortController.abort();
+      }
+
       mutexData.taskQueue = [];
     },
 
     abortAll(): void {
       // Отменяет текущую и все последующие задачи
-      mutexData.taskQueue.forEach((task) => {
+      for (const task of mutexData.taskQueue) {
         task.abortController.abort();
-      });
+      }
     },
 
     data: mutexData,

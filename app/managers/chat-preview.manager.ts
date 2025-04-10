@@ -1,6 +1,6 @@
 import {EventListenerBase} from "~/helpers/event-listener-base";
 import type {Chat, ChatPreview, Message} from "~/common/types";
-import {messageManager, MessageManager} from "~/managers/message.manager";
+import {type DeleteMessageData, messageManager, MessageManager} from "~/managers/message.manager";
 import {chatManager, ChatManager, type ChatPreviewManagerEventListenerListeners} from "~/managers/chat.manager";
 import {MessageStore, messageStore} from "~/database/message.store";
 
@@ -16,6 +16,7 @@ export class ChatPreviewManager extends EventListenerBase<ChatPreviewManagerEven
 
         this.chatManager.addEventListener('upsert', this.handleChatUpsert);
         this.messageManager.addEventListener('upsert-last-message', this.handleUpsertLastMessage);
+        this.messageManager.addEventListener('delete', this.handleDeleteMessage);
     }
 
     private handleChatUpsert = async (chats: Chat[]) => {
@@ -89,6 +90,37 @@ export class ChatPreviewManager extends EventListenerBase<ChatPreviewManagerEven
 
         this.dispatchEvent('upsert', [newChatPreview]);
 
+    }
+
+    private handleDeleteMessage = async (data: DeleteMessageData) => {
+        const chat = this.chatManager.get(data.chatId);
+
+        if (chat === null) {
+            return;
+        }
+
+        const chatPreview = this.chatsPreview.get(data.chatId);
+
+        if (chatPreview == null) {
+            return;
+        }
+
+        if (chatPreview.message === null) {
+            return;
+        }
+
+        if (chatPreview.message.id === data.messageId) {
+            const lastMessage = await this.messageStore.getLast(data.chatId);
+
+            const newChatPreview: ChatPreview = {
+                id: chat.id,
+                title: chat.title,
+                upsertTimestamp: Date.now(),
+                message: lastMessage,
+            }
+
+            this.dispatchEvent('upsert', [newChatPreview]);
+        }
     }
 }
 

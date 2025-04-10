@@ -1,13 +1,12 @@
 import {useCallback, useEffect, useState} from "react";
-import {
-    chatConnectionManager,
-    type ChatConnectionManagerEventListenerListeners, type ChatStateData,
-    Connection,
-    type ConnectionEventListenerListeners,
-} from "~/connection/p2p";
 import {useEventListener} from "~/hooks/use-event-listener.hook";
 import type {Chat} from "~/common/types";
 import {Mutex} from "~/lib/thread/mutex";
+import {type ChatStateData, Connection, type ConnectionEventListenerListeners} from "~/connection/connection";
+import {
+    chatConnectionManager,
+    type ChatConnectionManagerEventListenerListeners
+} from "~/managers/chat-connection.manager";
 
 const useConnectionMutex = new Mutex('useConnection');
 

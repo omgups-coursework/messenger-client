@@ -59,7 +59,6 @@ export class Mutex {
           }
         };
 
-        // Отдаём функцию разблокировки
         resolve(unlock);
       };
 

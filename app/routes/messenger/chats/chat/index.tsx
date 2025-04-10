@@ -1,6 +1,6 @@
 import type {Route} from "../../+types/layout";
 import {useNavigate, useParams} from "react-router";
-import React, {type ChangeEvent, useCallback, useEffect, useRef, useState} from "react";
+import React, {type ChangeEvent, useCallback, useContext, useEffect, useRef, useState} from "react";
 import styled, {useTheme} from "styled-components";
 import type {Theme} from "~/common/theme";
 import {ChatInput} from "~/routes/messenger/chats/chat/chat-input";
@@ -10,7 +10,7 @@ import {chatManager} from "~/managers/chat.manager";
 import {useChatMessages} from "~/hooks/use-chat-messages.hook";
 import {messageManager} from "~/managers/message.manager";
 import {ChatMessage} from "~/routes/messenger/chats/chat/message/chat-message";
-import {type Message, OutgoingMessageStatusEnum} from "~/common/types";
+import {type Message} from "~/common/types";
 import {IconEnum} from "~/components/icon.component";
 import {MessageContextProvider} from "~/routes/messenger/chats/chat/context-menu/message-context-provider";
 import {ChatContext, type ChatContextData} from "~/routes/messenger/chats/chat/context/chat.context";
@@ -22,7 +22,6 @@ import {useEscape} from "~/hooks/use-escape";
 import {CHAT_BACK_ESCAPE_PRIORITY, CHAT_CLEAR_SELECTED_MESSAGES_ESCAPE_PRIORITY} from "~/common/escpae-priority";
 import {findUrlMatches} from "~/lib/url/find-url-matches";
 import {useConnection} from "~/hooks/use-connection";
-import {chatConnectionManager} from "~/connection/p2p";
 
 type LinkPreviewResult = {
     url: string;
@@ -126,6 +125,7 @@ export default function Chat() {
             const extractedLinkPreviewFromText = await fetchLinkPreview(trimmedText);
 
             if (extractedLinkPreviewFromText) {
+                // TODO: оставить только содержимое сообщения
                 messageManager.send(chat.id, {
                     id: Date.now().toString(),
                     chatId: chat.id,
@@ -145,6 +145,7 @@ export default function Chat() {
             }
         }
 
+        // TODO: оставить только содержимое сообщения
         messageManager.send(chat.id, {
             id: Date.now().toString(),
             chatId: chat.id,
@@ -415,6 +416,18 @@ const AnimatedHeader: React.FC<{
     chatSubtitle: string;
     selectedCount: number;
 }> = ({ showButtons, chatTitle, chatSubtitle, selectedCount }) => {
+    const chatContext = useContext(ChatContext);
+
+    const handleDelete = useCallback(() => {
+        console.log('handleDelete', selectedCount);
+
+        for (const messageId of chatContext.selectedMessages) {
+            messageManager.delete(chatContext.chat.id, messageId)
+        }
+
+        chatContext.setSelectedMessages(new Set<Message['id']>());
+    }, [chatContext.selectedMessages, chatContext.setSelectedMessages])
+
     return (
         <SwitcherContainer>
             <InnerContainer style={{ transform: showButtons ? 'translateY(-40px)' : 'translateY(0)' }}>
@@ -430,7 +443,7 @@ const AnimatedHeader: React.FC<{
                             <ButtonText>FORWARD</ButtonText>
                             <ButtonSecondaryText>{selectedCount}</ButtonSecondaryText>
                         </Button>
-                        <Button>
+                        <Button onClick={handleDelete}>
                             <ButtonText>DELETE</ButtonText>
                             <ButtonSecondaryText>{selectedCount}</ButtonSecondaryText>
                         </Button>
@@ -446,6 +459,8 @@ const SwitcherContainer = styled.div`
     height: 40px;
     overflow: hidden;
     position: relative;
+    
+    pointer-events: auto;
 `;
 
 const InnerContainer = styled.div`

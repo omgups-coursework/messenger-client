@@ -1,4 +1,4 @@
-import type {Message} from "~/common/types";
+import type { Chat, Message } from "~/common/types";
 
 export class MessageStore {
     private dbName = "messenger_messages";
@@ -12,7 +12,8 @@ export class MessageStore {
             request.onupgradeneeded = () => {
                 const db = request.result;
                 if (!db.objectStoreNames.contains(this.storeName)) {
-                    const store = db.createObjectStore(this.storeName, { keyPath: "id" });
+                    // Создаём хранилище с составным ключом: [chatId, id]
+                    const store = db.createObjectStore(this.storeName, { keyPath: ["chatId", "id"] });
                     store.createIndex("chatId", "chatId", { unique: false });
                     store.createIndex("senderId", "senderId", { unique: false });
                     store.createIndex("chatId_timestamp", ["chatId", "timestamp"], { unique: false });
@@ -93,12 +94,14 @@ export class MessageStore {
         });
     }
 
-    public async delete(id: string): Promise<void> {
+    // Теперь удаление происходит по составному ключу [chatId, messageId]
+    public async delete(chatId: Chat['id'], messageId: Message['id']): Promise<void> {
         const db = await this.getDB();
         const tx = db.transaction(this.storeName, "readwrite");
         const store = tx.objectStore(this.storeName);
+
         await new Promise((resolve, reject) => {
-            const req = store.delete(id);
+            const req = store.delete([chatId, messageId]);
             req.onsuccess = () => resolve(undefined);
             req.onerror = () => reject(req.error);
         });

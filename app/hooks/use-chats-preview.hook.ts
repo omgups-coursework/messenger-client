@@ -4,7 +4,7 @@ import {
 } from "~/managers/chat.manager";
 import {useState} from "react";
 import type {ChatPreview} from "~/common/types";
-import {chatPreviewManager} from "~/managers/chat-preview-manager";
+import {chatPreviewManager} from "~/managers/chat-preview.manager";
 
 export function useChatsPreview() {
     const [chatsPreview, setChatsPreview] = useState<Map<ChatPreview['id'], ChatPreview>>(new Map());

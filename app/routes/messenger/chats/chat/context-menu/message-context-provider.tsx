@@ -132,6 +132,10 @@ export const MessageContextProvider: React.FC<MessageContextProviderProps> = () 
                     text: 'Delete selected',
                     icon: IconEnum.DELETE_LINE,
                     onClick: () => {
+                        for (const messageId of chatContext.selectedMessages) {
+                            messageManager.delete(chatContext.chat.id, messageId)
+                        }
+
                         setContextMenuData(null);
                         chatContext.setSelectedMessages(new Set<Message['id']>());
                     },

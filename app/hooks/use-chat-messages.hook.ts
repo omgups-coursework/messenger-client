@@ -18,16 +18,34 @@ export const useChatMessages = (chatId: Chat['id']) => {
     }, [chatId]);
 
     useEventListener<MessageManagerEventListenerListeners, 'upsert'>(messageManager, 'upsert', (messages) => {
+        console.log(`[useChatMessages] chatId=${chatId} handle upsert`, messages);
+
         setMessages(prev => {
             const copy = new Map(prev);
 
             for (const message of messages) {
+                if (message.chatId !== chatId) {
+                    continue;
+                }
+
                 copy.set(message.id, message);
             }
 
             return copy;
         });
-    })
+    }, [chatId]);
+
+    useEventListener<MessageManagerEventListenerListeners, 'delete'>(messageManager, 'delete', (data) => {
+        if (data.chatId !== chatId) {
+            return;
+        }
+
+        setMessages(prev => {
+            const copy = new Map(prev);
+            copy.delete(data.messageId);
+            return copy;
+        });
+    }, [chatId])
 
     return {
         messages: messages,

@@ -75,7 +75,9 @@ function renderInlineAndLinks(text: string): React.ReactNode[] {
                 </code>
             )
         } else {
-            result.push(...renderLinks(part, `text-${i}`))
+            const links = renderLinks(part, `text-${i}`);
+
+            result.push(...links);
         }
     })
 
@@ -88,17 +90,17 @@ export function renderLinks(text: string, keyPrefix: string): React.ReactNode[] 
 
     const matches = findUrlMatches(text);
 
-    matches.forEach((match, i) => {
+    for (const [index, match] of matches.entries()) {
         const { url, index } = match;
 
         if (lastIndex < index) {
             const chunk = text.slice(lastIndex, index);
-            result.push(...renderTextWithLineBreaks(chunk, `${keyPrefix}-chunk-${i}`));
+            result.push(...renderTextWithLineBreaks(chunk, `${keyPrefix}-chunk-${index}`));
         }
 
         result.push(
             <Link
-                key={`${keyPrefix}-link-${i}`}
+                key={`${keyPrefix}-link-${index}`}
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -108,11 +110,13 @@ export function renderLinks(text: string, keyPrefix: string): React.ReactNode[] 
         );
 
         lastIndex = index + url.length;
-    });
+    }
 
     if (lastIndex < text.length) {
         const remaining = text.slice(lastIndex);
-        result.push(...renderTextWithLineBreaks(remaining, `${keyPrefix}-end`));
+        const textWithLineBreaks = renderTextWithLineBreaks(remaining, `${keyPrefix}-end`);
+
+        result.push(...textWithLineBreaks);
     }
 
     return result;
@@ -120,11 +124,14 @@ export function renderLinks(text: string, keyPrefix: string): React.ReactNode[] 
 
 function renderTextWithLineBreaks(text: string, keyPrefix: string): React.ReactNode[] {
     const lines = text.split('\n');
+
     return lines.flatMap((line, i) => {
         const nodes: React.ReactNode[] = [<React.Fragment key={`${keyPrefix}-line-${i}`}>{line}</React.Fragment>];
+
         if (i < lines.length - 1) {
             nodes.push(<br key={`${keyPrefix}-br-${i}`} />);
         }
+
         return nodes;
     });
 }

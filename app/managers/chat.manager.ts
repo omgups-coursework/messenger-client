@@ -34,16 +34,6 @@ export class ChatManager extends EventListenerBase<ChatManagerEventListenerListe
         }
 
         return null
-        // const chat = await this.chatStore.get(chatId);
-        //
-        // if (chat === null) {
-        //     return null;
-        // }
-        //
-        // this.chats.set(chat.id, chat);
-        // this.dispatchEvent('upsert', [chat]);
-        //
-        // return chat;
     }
 
     public async add(chat: Chat): Promise<Chat['id']> {
